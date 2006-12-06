@@ -1,0 +1,17 @@
+bin/wikedit
+Changes
+lib/Socialtext/EditPage.pm
+lib/Socialtext/WikiObject.pm
+lib/Socialtext/Resting/Utils.pm
+Makefile.PL
+MANIFEST
+META.yml
+README
+t/00-load.t
+t/edit-page.t
+t/mock-editor.pl
+t/Mock/Rester.pm
+t/object.t
+t/pod-coverage.t
+t/pod.t
+t/wikedit.t
