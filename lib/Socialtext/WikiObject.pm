@@ -2,6 +2,7 @@ package Socialtext::WikiObject;
 use strict;
 use warnings;
 use Carp;
+use Data::Dumper;
 
 =head1 NAME
 
@@ -9,7 +10,7 @@ Socialtext::WikiObject - Represent wiki markup as a data structure and object
 
 =cut
 
-our $VERSION = '0.01';
+our $VERSION = '0.02';
 
 =head1 SYNOPSIS
 
@@ -24,6 +25,9 @@ our $VERSION = '0.01';
 Socialtext::WikiObject is a package that attempts to fetch and parse some wiki
 text into a perl data structure.  This makes it easier for tools to access
 information stored on the wiki.
+
+The goal of Socialtext::WikiObject is to create a structure that is 'good
+enough' for most cases.
 
 The wiki data is parsed into a data structure intended for easy access to the
 data.  Headings, lists and text are supported.  Tables are not currently
@@ -55,6 +59,8 @@ If the page is given, it will be loaded immediately.
 
 =cut
 
+our $DEBUG = 0;
+
 sub new {
    my ($class, %opts) = @_;
    croak "rester is mandatory!" unless $opts{rester};
@@ -81,42 +87,55 @@ sub load_page {
     my $wikitext = $rester->get_page($page);
     return unless $wikitext;
 
+    # Find the smallest heading
+    my $heading_level_start = _smallest_heading($wikitext) || 1;
+
     my $current_heading;
     my @parent_stack;
     my $base_obj = $self;
-    my $heading_level_start;
     for my $line (split "\n", $wikitext) {
 	next if $line =~ /^\s*$/;
 
         # Header line
 	if ($line =~ m/^(\^\^*)\s+(.+?):?\s*$/) {
-            $heading_level_start = length($1) if !defined $heading_level_start;
 	    my $heading_level = length($1 || '') - $heading_level_start;
+            warn "hl=$heading_level hls=$heading_level_start ($line)\n" if $DEBUG;
 	    my $new_heading = $2;
 	    while (@parent_stack > $heading_level) {
+                warn "going down" if $DEBUG;
                 # Down a header level
                 pop @parent_stack;
 	    }
 	    if ($heading_level > @parent_stack) {
-                # Up a level - create a new node
-		push @parent_stack, $current_heading;
-		my $old_obj = $base_obj;
-		$base_obj = { name => $current_heading };
-                $base_obj->{text} = $old_obj->{$current_heading} 
-                    if $current_heading and $old_obj->{$current_heading};
+                if ($current_heading) {
+                    warn "going up $current_heading ($line)" if $DEBUG;
+                    # Down a header level
+                    # Up a level - create a new node
+                    push @parent_stack, $current_heading;
+                    my $old_obj = $base_obj;
+                    $base_obj = { name => $current_heading };
+                    $base_obj->{text} = $old_obj->{$current_heading} 
+                        if $current_heading and $old_obj->{$current_heading};
 
-                # update previous base' - @items and direct pointers
-		push @{ $old_obj->{items} }, $base_obj;
-		$old_obj->{$current_heading} = $base_obj;
-		$old_obj->{lc($current_heading)} = $base_obj;
+                    # update previous base' - @items and direct pointers
+                    push @{ $old_obj->{items} }, $base_obj;
+                    $old_obj->{$current_heading} = $base_obj;
+                    $old_obj->{lc($current_heading)} = $base_obj;
+                }
+                else {
+                    warn "Going up, no previous heading ($line)\n" if $DEBUG;
+                }
 	    }
 	    else {
+                warn "Something... ($line)\n" if $DEBUG;
+                warn "ch=$current_heading\n" if $DEBUG and $current_heading;
 		$base_obj = $self;
 		for (@parent_stack) {
 		    $base_obj = $base_obj->{$_} || die "Can't find $_";
 		}
 	    }
 	    $current_heading = $new_heading;
+            warn "Current heading: $current_heading\n" if $DEBUG;
 	}
         # Lists
 	elsif ($line =~ m/^[#\*]\s+(.+)/) {
@@ -142,7 +161,18 @@ sub load_page {
 	}
         # Text under a heading
 	elsif ($current_heading) {
-	    $base_obj->{$current_heading} .= "$line\n";
+            if (ref($base_obj->{$current_heading}) eq 'ARRAY') {
+                $base_obj->{$current_heading} = { 
+                    items => $base_obj->{$current_heading},
+                    text => "$line\n",
+                }
+            }
+            elsif (ref($base_obj->{$current_heading}) eq 'HASH') {
+                $base_obj->{$current_heading}{text} .= "$line\n";
+            }
+            else {
+                $base_obj->{$current_heading} .= "$line\n";
+            }
 	    $base_obj->{lc($current_heading)} = $base_obj->{$current_heading};
 	}
         # Text without a heading
@@ -150,6 +180,18 @@ sub load_page {
             $base_obj->{text} .= "$line\n";
         }
     }
+    warn Dumper $self if $DEBUG;
+}
+
+sub _smallest_heading {
+    my $text = shift;
+    my $big = 99;
+    my $heading = $big;
+    while ($text =~ m/^(\^+)\s/mg) {
+        my $len = length($1);
+        $heading = $len if $len < $heading;
+    }
+    return $heading == $big ? undef : $heading;
 }
 
 =head1 AUTHOR

@@ -1,5 +1,11 @@
 Revision history for Socialtext-Utils
 
+0.02 - Sat Dec  9 21:25:05 PST 2006
+ - Removed dependency on Test::Exception
+ - Fixed infinite loop when a smaller heading (^^^^) is seen before a bigger
+   heading (^^)
+ - Fixed handling of mixed list/text in a section
+
 0.01 - Sat Dec  2 19:49:17 PST 2006
  - wikedit - Edit a wiki page with $EDITOR
  - Socaltext::EditPage

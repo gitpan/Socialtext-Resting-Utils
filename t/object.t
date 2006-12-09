@@ -2,8 +2,7 @@
 use strict;
 use warnings;
 use Data::Dumper;
-use Test::More tests => 8;
-use Test::Exception;
+use Test::More tests => 12;
 use lib 't/lib';
 use t::Mock::Rester;
 use lib 'lib';
@@ -16,22 +15,84 @@ my $rester = t::Mock::Rester->new;
 
 my @pages = load_test_data();
 for my $p (@pages) {
-    $rester->put_page($p->{page}, $p->{page_content});
-
-    my $o = Socialtext::WikiObject->new(
-        rester => $rester, 
-        page => $p->{page},
+    object_ok(
+        page => $p->{page}, 
+        page_content => $p->{page_content},
+        expected => $p->{expected},
     );
-    isa_ok $o, 'Socialtext::WikiObject';
-    is_deeply $o, $p->{expected}, $p->{page};
 }
 
 No_wiki_supplied: {
-   throws_ok { Socialtext::WikiObject->new }
-             qr/rester is mandatory!/;
+    eval { Socialtext::WikiObject->new };
+    like $@, qr/rester is mandatory!/;
+}
+
+Deep_initial_heading: {
+    object_ok(
+        page => 'Test Page',
+        page_content => <<'EOT',
+Stuff
+
+^^^^ Currently listening to:
+
+A song
+
+^^ Getting oriented
+
+Food
+EOT
+        expected => { 
+            page => 'Test Page',
+            rester => $rester,
+            text => "Stuff\n",
+            'currently listening to' => "A song\n",
+            'Currently listening to' => "A song\n",
+            'Getting oriented' => "Food\n",
+            'getting oriented' => "Food\n",
+        },
+    );
+}
+
+Items_and_text: {
+    object_ok(
+        page => 'Test Page',
+        page_content => <<'EOT',
+^ Contact Info:
+
+* Item 1
+* Item 2
+
+Other text
+More text
+EOT
+        expected => { 
+            page => 'Test Page',
+            rester => $rester,
+            'Contact Info' => {
+                items => [ 'Item 1', 'Item 2' ],
+                text => "Other text\nMore text\n",
+            },
+            'contact info' => {
+                items => [ 'Item 1', 'Item 2' ],
+                text => "Other text\nMore text\n",
+            },
+        },
+    );
 }
 
 exit;
+
+sub object_ok {
+    my %opts = @_;
+    $rester->put_page($opts{page}, $opts{page_content});
+
+    my $o = Socialtext::WikiObject->new(
+        rester => $rester, 
+        page => $opts{page},
+    );
+    isa_ok $o, 'Socialtext::WikiObject';
+    is_deeply $o, $opts{expected}, $opts{page};
+}
 
 sub load_test_data {
     my @data;
