@@ -30,8 +30,8 @@ The goal of Socialtext::WikiObject is to create a structure that is 'good
 enough' for most cases.
 
 The wiki data is parsed into a data structure intended for easy access to the
-data.  Headings, lists and text are supported.  Tables are not currently
-parsed.
+data.  Headings, lists and text are supported.  Simple tables without multi-line
+rows are parsed.
 
 Subclass Socialtext::WikiObject to create a custom module for your data.  You
 can provide accessors into the parsed wiki data.  
@@ -87,111 +87,156 @@ sub load_page {
     my $wikitext = $rester->get_page($page);
     return unless $wikitext;
 
-    # Find the smallest heading
-    my $heading_level_start = _smallest_heading($wikitext) || 1;
+    $self->_find_smallest_heading($wikitext);
+    $self->{parent_stack} = [];
+    $self->{base_obj} = $self;
 
-    my $current_heading;
-    my @parent_stack;
-    my $base_obj = $self;
     for my $line (split "\n", $wikitext) {
 	next if $line =~ /^\s*$/;
 
         # Header line
 	if ($line =~ m/^(\^\^*)\s+(.+?):?\s*$/) {
-	    my $heading_level = length($1 || '') - $heading_level_start;
-            warn "hl=$heading_level hls=$heading_level_start ($line)\n" if $DEBUG;
-	    my $new_heading = $2;
-	    while (@parent_stack > $heading_level) {
-                warn "going down" if $DEBUG;
-                # Down a header level
-                pop @parent_stack;
-	    }
-	    if ($heading_level > @parent_stack) {
-                if ($current_heading) {
-                    warn "going up $current_heading ($line)" if $DEBUG;
-                    # Down a header level
-                    # Up a level - create a new node
-                    push @parent_stack, $current_heading;
-                    my $old_obj = $base_obj;
-                    $base_obj = { name => $current_heading };
-                    $base_obj->{text} = $old_obj->{$current_heading} 
-                        if $current_heading and $old_obj->{$current_heading};
-
-                    # update previous base' - @items and direct pointers
-                    push @{ $old_obj->{items} }, $base_obj;
-                    $old_obj->{$current_heading} = $base_obj;
-                    $old_obj->{lc($current_heading)} = $base_obj;
-                }
-                else {
-                    warn "Going up, no previous heading ($line)\n" if $DEBUG;
-                }
-	    }
-	    else {
-                warn "Something... ($line)\n" if $DEBUG;
-                warn "ch=$current_heading\n" if $DEBUG and $current_heading;
-		$base_obj = $self;
-		for (@parent_stack) {
-		    $base_obj = $base_obj->{$_} || die "Can't find $_";
-		}
-	    }
-	    $current_heading = $new_heading;
-            warn "Current heading: $current_heading\n" if $DEBUG;
+            $self->_add_heading($1, $2);
 	}
         # Lists
 	elsif ($line =~ m/^[#\*]\s+(.+)/) {
-	    my $item = $1;
-	    my $field = $current_heading || 'items';
-	    if (! exists $base_obj->{$field}) {
-		push @{ $base_obj->{$field} }, $item;
-	    }
-	    elsif (ref($base_obj->{$field}) eq 'ARRAY') {
-		push @{ $base_obj->{$field} }, $item;
-	    }
-	    elsif (ref($base_obj->{$field}) eq 'HASH') {
-		push @{ $base_obj->{$field}{items} }, $item;
-	    }
-	    elsif ($base_obj->{$field}) {
-                my $text = $base_obj->{$field};
-		$base_obj->{$field} = { 
-                    text => $text, 
-                    items => [ $item ],
-                };
-	    }
-	    $base_obj->{lc($field)} = $base_obj->{$field};
+            $self->_add_list_item($1);
 	}
-        # Text under a heading
-	elsif ($current_heading) {
-            if (ref($base_obj->{$current_heading}) eq 'ARRAY') {
-                $base_obj->{$current_heading} = { 
-                    items => $base_obj->{$current_heading},
-                    text => "$line\n",
-                }
-            }
-            elsif (ref($base_obj->{$current_heading}) eq 'HASH') {
-                $base_obj->{$current_heading}{text} .= "$line\n";
-            }
-            else {
-                $base_obj->{$current_heading} .= "$line\n";
-            }
-	    $base_obj->{lc($current_heading)} = $base_obj->{$current_heading};
-	}
-        # Text without a heading
+        # Tables
+        elsif ($line =~ m/^\|\s*(.+?)\s*\|$/) {
+            $self->_add_table_row($1);
+        }
         else {
-            $base_obj->{text} .= "$line\n";
+            $self->_add_text($line);
         }
     }
+    delete $self->{current_heading};
+    delete $self->{base_obj};
+    delete $self->{heading_level_start};
+    delete $self->{parent_stack};
     warn Dumper $self if $DEBUG;
 }
 
-sub _smallest_heading {
+sub _add_heading {
+    my $self = shift;
+    my $heading_level = length(shift || '') - $self->{heading_level_start};
+    my $new_heading = shift;
+    warn "hl=$heading_level hls=$self->{heading_level_start} ($new_heading)\n" if $DEBUG;
+
+    my $cur_heading = $self->{current_heading};
+    while (@{$self->{parent_stack}} > $heading_level) {
+        warn "going down" if $DEBUG;
+        # Down a header level
+        pop @{$self->{parent_stack}};
+    }
+    if ($heading_level > @{$self->{parent_stack}}) {
+        if ($cur_heading) {
+            warn "going up $cur_heading ($new_heading)" if $DEBUG;
+            # Down a header level
+            # Up a level - create a new node
+            push @{$self->{parent_stack}}, $cur_heading;
+            my $old_obj = $self->{base_obj};
+            $self->{base_obj} = { name => $cur_heading };
+            $self->{base_obj}{text} = $old_obj->{$cur_heading} 
+                if $cur_heading and $old_obj->{$cur_heading};
+
+            # update previous base' - @items and direct pointers
+            push @{ $old_obj->{items} }, $self->{base_obj};
+            $old_obj->{$cur_heading} = $self->{base_obj};
+            $old_obj->{lc($cur_heading)} = $self->{base_obj};
+        }
+        else {
+            warn "Going up, no previous heading ($new_heading)\n" if $DEBUG;
+        }
+    }
+    else {
+        warn "Something... ($new_heading)\n" if $DEBUG;
+        warn "ch=$cur_heading\n" if $DEBUG and $cur_heading;
+        $self->{base_obj} = $self;
+        for (@{$self->{parent_stack}}) {
+            $self->{base_obj} = $self->{base_obj}{$_} || die "Can't find $_";
+        }
+    }
+    $self->{current_heading} = $new_heading;
+    warn "Current heading: $self->{current_heading}\n" if $DEBUG;
+}
+
+sub _add_text {
+    my $self = shift;
+    my $line = shift;
+
+    # Text under a heading
+    my $cur_heading = $self->{current_heading};
+    if ($cur_heading) {
+        if (ref($self->{base_obj}{$cur_heading}) eq 'ARRAY') {
+            $self->{base_obj}{$cur_heading} = { 
+                items => $self->{base_obj}{$cur_heading},
+                text => "$line\n",
+            }
+        }
+        elsif (ref($self->{base_obj}{$cur_heading}) eq 'HASH') {
+            $self->{base_obj}{$cur_heading}{text} .= "$line\n";
+        }
+        else {
+            $self->{base_obj}{$cur_heading} .= "$line\n";
+        }
+        $self->{base_obj}{lc($cur_heading)} = $self->{base_obj}{$cur_heading};
+    }
+    # Text without a heading
+    else {
+        $self->{base_obj}{text} .= "$line\n";
+    }
+}
+
+sub _add_list_item {
+    my $self = shift;
+    my $item = shift;
+
+    $self->_add_array_field('items', $item);
+}
+
+sub _add_table_row {
+    my $self = shift;
+    my $line = shift;
+
+    my @cols = split /\s*\|\s*/, $line;
+    $self->_add_array_field('table', \@cols);
+}
+
+sub _add_array_field {
+    my $self = shift;
+    my $field_name = shift;
+    my $item = shift;
+
+    my $field = $self->{current_heading} || $field_name;
+    my $bobj = $self->{base_obj};
+    if (! exists $bobj->{$field} or ref($bobj->{$field}) eq 'ARRAY') {
+        push @{$bobj->{$field}}, $item;
+    }
+    elsif (ref($bobj->{$field}) eq 'HASH') {
+        push @{$bobj->{$field}{$field_name}}, $item;
+    }
+    else {
+        my $text = $bobj->{$field};
+        $bobj->{$field} = {
+            text => $text,
+            $field_name => [ $item ],
+        };
+    }
+    $bobj->{lc($field)} = $bobj->{$field};
+}
+
+sub _find_smallest_heading {
+    my $self = shift;
     my $text = shift;
+
     my $big = 99;
     my $heading = $big;
     while ($text =~ m/^(\^+)\s/mg) {
         my $len = length($1);
         $heading = $len if $len < $heading;
     }
-    return $heading == $big ? undef : $heading;
+    $self->{heading_level_start} = $heading == $big ? 1 : $heading;
 }
 
 =head1 AUTHOR

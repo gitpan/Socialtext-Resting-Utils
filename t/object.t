@@ -2,7 +2,7 @@
 use strict;
 use warnings;
 use Data::Dumper;
-use Test::More tests => 12;
+use Test::More tests => 14;
 use lib 't/lib';
 use t::Mock::Rester;
 use lib 'lib';
@@ -75,6 +75,45 @@ EOT
             'contact info' => {
                 items => [ 'Item 1', 'Item 2' ],
                 text => "Other text\nMore text\n",
+            },
+        },
+    );
+}
+
+Simple_tables: {
+    my $table_one = [
+        [ '*Search Term*',  '*Expected Results*' ],
+        [ 'foo',            q{exact:Pages containing 'foo'} ],
+        [ '=foo',           q{exact:Titles containing 'foo'} ],
+    ];
+    my $table_two = [
+        ['Spam spam spam', 'Water bottle'],
+        ['whiteboards and pens', 'with smelly markers'],
+    ];
+    object_ok(
+        page => 'Table Page',
+        page_content => <<'EOT',
+^ Tests:
+| *Search Term* | *Expected Results* |
+| foo | exact:Pages containing 'foo' |
+| =foo | exact:Titles containing 'foo' |
+^ Other things:
+These are some things I see:
+| Spam spam spam | Water bottle |
+| whiteboards and pens | with smelly markers |
+EOT
+        expected => { 
+            page => 'Table Page',
+            rester => $rester,
+            Tests => $table_one,
+            tests => $table_one,
+            'Other things' => {
+                table => $table_two,
+                text => "These are some things I see:\n",
+            },
+            'other things' => {
+                table => $table_two,
+                text => "These are some things I see:\n",
             },
         },
     );

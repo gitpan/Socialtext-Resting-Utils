@@ -1,5 +1,9 @@
 Revision history for Socialtext-Utils
 
+0.03 - Fri Dec 29 17:10:18 PST 2006
+ - added simple table support
+ - refactored code
+
 0.02 - Sat Dec  9 21:25:05 PST 2006
  - Removed dependency on Test::Exception
  - Fixed infinite loop when a smaller heading (^^^^) is seen before a bigger
