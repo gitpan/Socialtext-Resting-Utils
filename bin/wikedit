@@ -5,7 +5,8 @@ use Socialtext::Resting;
 use Socialtext::EditPage;
 use Getopt::Long;
 
-my %opts = load_config("$ENV{HOME}/.wikeditrc");
+my $rc_file = "$ENV{HOME}/.wikeditrc";
+my %opts = load_config($rc_file);
 
 GetOptions(
     'username|u=s' => \$opts{username},
@@ -38,7 +39,7 @@ Options:
  --workspace    Which workspace to post to
 
 Config:
-Put the above options into ~/.vimkirc like this:
+Put the above options into $rc_file like this:
 
   username = some_user\@foobar.com
   password = your_pass
