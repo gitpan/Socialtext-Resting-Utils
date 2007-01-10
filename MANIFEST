@@ -3,6 +3,7 @@ Changes
 lib/Socialtext/EditPage.pm
 lib/Socialtext/WikiObject.pm
 lib/Socialtext/Resting/Utils.pm
+lib/Socialtext/Resting/Mock.pm
 Makefile.PL
 MANIFEST
 META.yml

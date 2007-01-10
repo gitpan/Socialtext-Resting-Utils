@@ -106,7 +106,7 @@ sub _edit_content {
     my $self = shift;
     my $content = shift;
 
-    my $tmp = new File::Temp();
+    my $tmp = new File::Temp( SUFFIX => '.wiki' );
     print $tmp $content;
     close $tmp or die "Can't write " . $tmp->filename . ": $!";
 
