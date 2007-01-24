@@ -10,8 +10,8 @@ META.yml
 README
 t/00-load.t
 t/edit-page.t
+t/extraclude.txt
 t/mock-editor.pl
-t/Mock/Rester.pm
 t/object.t
 t/pod-coverage.t
 t/pod.t

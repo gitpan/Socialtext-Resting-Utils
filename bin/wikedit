@@ -1,42 +1,42 @@
 #!/usr/bin/perl
 use strict;
 use warnings;
-use Socialtext::Resting;
+use Socialtext::Resting::DefaultRester;
 use Socialtext::EditPage;
 use Getopt::Long;
 
-my $rc_file = "$ENV{HOME}/.wikeditrc";
-my %opts = load_config($rc_file);
-
+my %opts;
 GetOptions(
     'username|u=s' => \$opts{username},
     'password|p=s' => \$opts{password},
     'server|s=s'   => \$opts{server},
     'workspace|w=s'=> \$opts{workspace},
+    'o|output=s'   => \$opts{output},
+    'pull-includes'=> \$opts{pull_includes},
 ) or usage();
 
-my $page_name = shift || usage();
+my $page = shift || usage();
 
-my $rester = Socialtext::Resting->new(%opts);
-my $edit = Socialtext::EditPage->new(rester => $rester);
-if ($edit->edit_page(page => $page_name)) {
-    print "Updated page $page_name\n";
-}
-else {
-    print "$page_name did not change.\n";
-}
+my $edit = Socialtext::EditPage->new(%opts);
+$edit->edit_page(page => $page, output => $opts{output});
+
 exit;
 
 
 sub usage {
+    my $rc_file = $Socialtext::Resting::DefaultRester::CONFIG_FILE;
     die <<EOT;
 $0 page_name
 
-Options:
- --username     Specify the username to connect with
- --password     Specify the password to connect with
- --server       Which Socialtext server to connect to
- --workspace    Which workspace to post to
+Required options:
+ --username      Specify the username to connect with
+ --password      Specify the password to connect with
+ --server        Which Socialtext server to connect to
+ --workspace     Which workspace to post to
+
+Other options:
+ --pull-includes Inline content from {include} wafls in the 
+                 page and then extraclude it when saving
 
 Config:
 Put the above options into $rc_file like this:
@@ -48,19 +48,4 @@ Put the above options into $rc_file like this:
 EOT
 }
 
-sub load_config {
-    my $file = shift;
-
-    my %opts;
-    if (-e $file) {
-        open(my $fh, $file) or die "Can't open $file: $!";
-        while(<$fh>) {
-            if (/^(\w+)\s*=\s*(\S+)\s*$/) {
-                $opts{$1} = $2;
-            }
-        }
-        close $fh;
-    }
-    return %opts;
-}
 

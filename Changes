@@ -1,5 +1,14 @@
 Revision history for Socialtext-Utils
 
+0.06 - Tue Jan 23 21:05:35 PST 2007
+  - Added --pull-includes feature
+  - Added extraclude support
+  - Added collision detection when PUTting edits
+  - all unit tests now use Socialtext::Resting::Mock
+  - Added --output option to wikedit
+  - Introduced Socialtext::Resting::DefaultRester class
+    to handle storing user/pass/server/workspace info in one place
+
 0.05 - Tue Jan  9 17:31:52 PST 2007
   - fixed typo in usage
 

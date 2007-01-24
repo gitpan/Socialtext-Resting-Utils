@@ -92,10 +92,12 @@ sub load_page {
     $self->{base_obj} = $self;
 
     for my $line (split "\n", $wikitext) {
-	next if $line =~ /^\s*$/;
-
+        # whitespace
+	if ($line =~ /^\s*$/) {
+            $self->_add_whitespace;
+        }
         # Header line
-	if ($line =~ m/^(\^\^*)\s+(.+?):?\s*$/) {
+	elsif ($line =~ m/^(\^\^*)\s+(.+?):?\s*$/) {
             $self->_add_heading($1, $2);
 	}
         # Lists
@@ -110,11 +112,20 @@ sub load_page {
             $self->_add_text($line);
         }
     }
+
+    $self->_finish_parse;
+    warn Dumper $self if $DEBUG;
+}
+
+sub _add_whitespace {}
+
+sub _finish_parse {
+    my $self = shift;
+
     delete $self->{current_heading};
     delete $self->{base_obj};
     delete $self->{heading_level_start};
     delete $self->{parent_stack};
-    warn Dumper $self if $DEBUG;
 }
 
 sub _add_heading {

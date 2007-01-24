@@ -2,16 +2,15 @@
 use strict;
 use warnings;
 use Data::Dumper;
-use Test::More tests => 14;
-use lib 't/lib';
-use t::Mock::Rester;
+use Test::More tests => 15;
 use lib 'lib';
 
 BEGIN {
     use_ok 'Socialtext::WikiObject';
+    use_ok 'Socialtext::Resting::Mock';
 }
 
-my $rester = t::Mock::Rester->new;
+my $rester = Socialtext::Resting::Mock->new;
 
 my @pages = load_test_data();
 for my $p (@pages) {
@@ -93,7 +92,6 @@ Simple_tables: {
     object_ok(
         page => 'Table Page',
         page_content => <<'EOT',
-^ Tests:
 | *Search Term* | *Expected Results* |
 | foo | exact:Pages containing 'foo' |
 | =foo | exact:Titles containing 'foo' |
@@ -105,8 +103,7 @@ EOT
         expected => { 
             page => 'Table Page',
             rester => $rester,
-            Tests => $table_one,
-            tests => $table_one,
+            table => $table_one,
             'Other things' => {
                 table => $table_two,
                 text => "These are some things I see:\n",
