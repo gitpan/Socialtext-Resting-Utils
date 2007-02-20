@@ -101,14 +101,18 @@ sub edit_page {
     my $rester = $self->{rester};
     my $content = $self->_get_page($page);
 
+    my $tags = delete $args{tags} || [];
     if ($args{template}) {
-        if ($content =~ /^\S+ not found$/) {
+        if ($rester->response->code eq '404') {
             $content = $self->_get_page($args{template});
         }
         else {
             print "Not using template '$args{template}' - page already "
                  . "exists.\n";
         }
+        $rester->accept('text/plain');
+        my @tmpl_tags = $rester->get_pagetags($args{template});
+        push @$tags, @tmpl_tags;
     }
 
     if ($args{output}) {
@@ -155,7 +159,7 @@ sub edit_page {
         }
     }
 
-    if (my $tags = delete $args{tags}) {
+    if ($tags) {
         $tags = [$tags] unless ref($tags) eq 'ARRAY';
         for my $tag (@$tags) {
             $rester->put_pagetag($page, $tag);
@@ -284,7 +288,7 @@ sub _write_file {
     my ($filename, $content) = @_;
     $filename ||= File::Temp->new( SUFFIX => '.wiki' );
     open(my $fh, ">$filename") or die "Can't open $filename: $!";
-    print $fh $content;
+    print $fh $content || '';
     close $fh or die "Can't write $filename: $!";
     return $filename;
 }

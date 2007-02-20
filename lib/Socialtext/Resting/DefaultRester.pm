@@ -36,7 +36,8 @@ The config file is expected to be in the following format:
 
 =cut
 
-our $CONFIG_FILE = "$ENV{HOME}/.wikeditrc";
+my $home = $ENV{HOME} || "~";
+our $CONFIG_FILE = "$home/.wikeditrc";
 
 sub new {
     my $class = shift;
@@ -45,11 +46,15 @@ sub new {
         delete $args{$k} unless defined $args{$k};
     }
 
+    my $config_file = delete $args{'rester-config'} || $CONFIG_FILE;
     my %opts = (
-        _load_config($CONFIG_FILE),
+        _load_config($config_file),
         %args,
     );
-    return Socialtext::Resting->new(%opts);
+    my $rest_class = delete $opts{class} || 'Socialtext::Resting';
+    eval "require $rest_class";
+    die if $@;
+    return $rest_class->new(%opts);
 }
 
 sub _load_config {

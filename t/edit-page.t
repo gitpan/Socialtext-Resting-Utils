@@ -1,7 +1,7 @@
 #!/usr/bin/perl
 use strict;
 use warnings;
-use Test::More tests => 22;
+use Test::More tests => 23;
 use lib 'lib';
 use JSON;
 
@@ -51,7 +51,7 @@ Edit_with_tag: {
     $ep->edit_page(page => 'Foo', tags => 'Chimp');
 
     is $rester->get_page('Foo'), 'MONKEY';
-    is_deeply $rester->get_pagetags('Foo'), ['Chimp'];
+    is_deeply [$rester->get_pagetags('Foo')], ['Chimp'];
 }
 
 Edit_with_tags: {
@@ -175,6 +175,8 @@ Edit_last_page: {
 Edit_from_template: {
     $rester->put_page('Empty', 'Empty not found');
     $rester->put_page('Pookie', 'Template page');
+    $rester->put_pagetag('Pookie', 'Pumpkin');
+    $rester->response->code(404);
 
     my $ep = Socialtext::EditPage->new(rester => $rester);
     $ep->edit_page(
@@ -183,11 +185,13 @@ Edit_from_template: {
     );
 
     is $rester->get_page('Empty'), 'TEMPLATE PAGE';
+    is_deeply [$rester->get_pagetags('Empty')], ['Pumpkin'];
 }
 
 Template_when_page_already_exists: {
     $rester->put_page('Foo', 'Monkey');
     $rester->put_page('Pookie', 'Template page');
+    $rester->response->code(200);
 
     my $ep = Socialtext::EditPage->new(rester => $rester);
     $ep->edit_page(
