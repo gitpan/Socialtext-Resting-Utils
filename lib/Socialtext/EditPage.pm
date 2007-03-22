@@ -4,6 +4,7 @@ use strict;
 use Carp qw/croak/;
 use File::Temp;
 use Socialtext::Resting::DefaultRester;
+use Socialtext::Resting;
 use JSON;
 
 =head1 NAME
@@ -235,8 +236,10 @@ sub _edit_content {
     my $content = shift;
 
     my $filename = _write_file(undef, $content);
+    my $editor   = $ENV{EDITOR} || '/usr/bin/vim';
 
-    system( "$ENV{EDITOR} $filename" );
+    # Unit tests rely on using shell interpolation
+    system("$editor '$filename'");
 
     return _read_file($filename);
 }
@@ -268,7 +271,14 @@ sub _edit_content {
         while ($text =~ s/\.extraclude \[([^\]]+)\]\n(.+?)\.extraclude\n/{include: [$1]}\n/ism) {
             my ($page, $new_content) = ($1, $2);
             print "Putting extraclude '$page'\n";
-            $rester->put_page($page, $new_content);
+            eval {
+                $rester->put_page($page, $new_content);
+            };
+            if ($@) {
+                my $file = Socialtext::Resting::_name_to_id($page) . ".sav";
+                warn "Failed to write '$page', saving to $file\n";
+                _write_file($file, $new_content);
+            }
         }
 
         # Unescape special wafls
