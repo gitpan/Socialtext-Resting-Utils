@@ -8,7 +8,7 @@ Socialtext::Resting::Utils - Utilities for Socialtext REST APIs
 
 =cut
 
-our $VERSION = '0.12';
+our $VERSION = '0.13';
 
 =head1 SYNOPSIS
 
@@ -20,7 +20,7 @@ Luke Closs, C<< <luke.closs at socialtext.com> >>
 
 =head1 COPYRIGHT & LICENSE
 
-Copyright 2006 Luke Closs, all rights reserved.
+Copyright 2006, 2007 Luke Closs, all rights reserved.
 
 This program is free software; you can redistribute it and/or modify it
 under the same terms as Perl itself.

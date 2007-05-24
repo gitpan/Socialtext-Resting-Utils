@@ -12,7 +12,6 @@ GetOptions(
     'latest-tag=s' => \$opts{latest_tag},
     'o|output=s'   => \$edit_opts{output},
     'template=s'   => \$edit_opts{template},
-    'help'         => sub { usage(); exit },
 ) or usage();
 
 my $page = shift;

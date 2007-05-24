@@ -3,7 +3,7 @@ use strict;
 use warnings;
 use base 'Exporter';
 use Socialtext::Resting::DefaultRester;
-use Getopt::Long qw/:config pass_through/;
+use Getopt::Long qw/:config/;
 our @EXPORT_OK = qw/get_rester rester_usage/;
 
 =head1 NAME
@@ -29,6 +29,7 @@ Create a new rester from command line args.
 
 sub get_rester {
     my %opts = @_;
+    Getopt::Long::Configure('pass_through');
     GetOptions(
         \%opts,
         'server=s',
@@ -37,6 +38,7 @@ sub get_rester {
         'password=s',
         'rester-config=s',
     );
+    Getopt::Long::Configure('no_pass_through');
     return Socialtext::Resting::DefaultRester->new(%opts);
 }
 
@@ -50,10 +52,10 @@ sub rester_usage {
     my $rc_file = $Socialtext::Resting::DefaultRester::CONFIG_FILE;
     return <<EOT;
 REST API Options:
- --server      Socialtext server to archive mail to
+ --server      Socialtext server
  --username    User to login as
  --password    User password
- --workspace   Workspace to archive mail to
+ --workspace   Workspace to use
  --rester-config   Config file containing 'key = value'
 
 Rester Config:
@@ -62,7 +64,7 @@ Put the above options into $rc_file like this:
   username = some_user\@foobar.com
   password = your_pass
   workpace = your_workspace
-  server   = https://www.socialtext.net/
+  server   = https://www.socialtext.net
 EOT
 }
 
