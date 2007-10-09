@@ -232,6 +232,14 @@ sub set_taggedpages {
     $self->{taggedpages}{$tag} = shift;
 }
 
+=head2 json_verbose
+
+Set the json_verbose flag.
+
+=cut
+
+sub json_verbose { $_[0]->{json_verbose} = $_[1] }
+
 =head2 response
 
 Retrieve a fake response object.
@@ -241,7 +249,7 @@ Retrieve a fake response object.
 # hack so we don't need to create a new fake class
 sub response {
     my $self = shift;
-    $self->{response} = shift if $@;
+    $self->{response} = shift if @_;
     $self->{response} ||= HTTP::Response->new;
     return $self->{response};
 }

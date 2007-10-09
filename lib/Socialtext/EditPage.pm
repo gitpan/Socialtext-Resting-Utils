@@ -112,7 +112,7 @@ sub edit_page {
                  . "exists.\n";
         }
         $rester->accept('text/plain');
-        my @tmpl_tags = $rester->get_pagetags($args{template});
+        my @tmpl_tags = grep { !/^template$/ } $rester->get_pagetags($args{template});
         push @$tags, @tmpl_tags;
     }
 
@@ -162,7 +162,7 @@ sub edit_page {
             $content = _read_file($our_file);
         }
         else {
-            die $@;
+            $self->_handle_error($@, $page, $new_content);
         }
     }
 
@@ -280,17 +280,32 @@ sub _edit_content {
         my $text = shift;
         my $rester = $self->{rester};
 
-        while ($text =~ s/\.extraclude \[([^\]]+)\]\n(.+?)\.extraclude\n/{include: [$1]}\n/ism) {
-            my ($page, $new_content) = ($1, $2);
+        my $included_content = sub {
+            my $type    = lc shift;
+            my $name    = shift;
+            my $newline = shift || '';
+
+            if ($type eq 'clude') {
+                return "{include: [$name]}\n";
+            }
+            elsif ($type eq 'link') {
+                return "[$name]$newline";
+            }
+            die "Unknown extrathing: $type";
+        };
+
+        while ($text =~ s/\.extra(clude|link)\s     # $1 is title
+                          \[([^\]]+)\]              # $2 is [name]
+                          (\n?)                      # $3 is extra newline
+                          (.+?)
+                          \.extra(?:clude|link)\n
+                         /$included_content->($1, $2, $3)/ismex) {
+            my ($page, $new_content) = ($2, $4);
             print "Putting extraclude '$page'\n";
             eval {
                 $rester->put_page($page, $new_content);
             };
-            if ($@) {
-                my $file = Socialtext::Resting::_name_to_id($page) . ".sav";
-                warn "Failed to write '$page', saving to $file\n";
-                _write_file($file, $new_content);
-            }
+            $self->_handle_error($@, $page, $new_content) if $@;
         }
 
         # Unescape special wafls
@@ -304,6 +319,19 @@ sub _edit_content {
         return $text;
     }
 
+}
+
+sub _handle_error {
+    my ($self, $err, $page, $content) = @_;
+    my $file = Socialtext::Resting::_name_to_id($page) . ".sav";
+    my $i = 0;
+    while (-f $file) {
+        $i++;
+        $file =~ s/\.sav(?:\.\d+)?$/\.sav\.$i/;
+    }
+    warn "Failed to write '$page', saving to $file\n";
+    _write_file($file, $content);
+    die "$err\n";
 }
 
 sub _write_file {
