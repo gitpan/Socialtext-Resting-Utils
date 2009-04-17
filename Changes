@@ -1,5 +1,14 @@
 Revision history for Socialtext-Utils
 
+0.18 - Fri Apr 17 15:44:03 PDT 2009
+  - Added stu-tagged-pages utility
+  - stu-most-wanted won't update the page if it didn't change.
+  - Added order() to the mock rester
+  - create a default ~/.wikeditrc if it doesn't exist
+  - stu-local-copy accepts multiple tags
+  - have DefaultRester use CBC::Crypt (if available) to crypt up the password
+  - add an edit summary callback method to Socialtext::EditPage
+
 0.17 - Tue Oct  9 10:03:23 PDT 2007
   - added extralink wafl
   - improved/tweaked stu-most-wanted output to link to non-existent pages

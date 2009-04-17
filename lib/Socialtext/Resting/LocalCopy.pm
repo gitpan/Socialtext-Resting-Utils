@@ -1,7 +1,7 @@
 package Socialtext::Resting::LocalCopy;
 use strict;
 use warnings;
-use JSON;
+use JSON::XS;
 
 =head1 NAME
 
@@ -62,8 +62,7 @@ sub pull {
     $r->json_verbose(1);
     for my $p (@pages) {
         print "Saving $p ...\n";
-        my $json = $r->get_page($p);
-        my $obj = jsonToObj($json);
+        my $obj = decode_json($r->get_page($p));
 
         # Trim the content
         my %to_keep = map { $_ => 1 } $self->_keys_to_keep;
@@ -73,12 +72,13 @@ sub pull {
 
         my $wikitext_file = "$dir/$obj->{page_id}";
         open(my $fh, ">$wikitext_file") or die "Can't open $wikitext_file: $!";
+        binmode $fh, ':utf8';
         print $fh delete $obj->{wikitext};
         close $fh or die "Can't write $wikitext_file: $!";
 
         my $json_file = "$wikitext_file.json";
         open(my $jfh, ">$json_file") or die "Can't open $json_file: $!";
-        print $jfh objToJson($obj);
+        print $jfh encode_json($obj);
         close $jfh or die "Can't write $json_file: $!";
     }
 }
@@ -115,7 +115,7 @@ sub push {
     for my $f (@files) {
         open(my $fh, $f) or die "Can't open $f: $!";
         local $/ = undef;
-        my $obj = jsonToObj(<$fh>);
+        my $obj = decode_json(<$fh>);
         close $fh;
 
         (my $wikitext_file = $f) =~ s/\.json$//;

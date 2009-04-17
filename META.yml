@@ -1,19 +1,16 @@
---- #YAML:1.0
-name:                Socialtext-Resting-Utils
-version:             0.17
-abstract:            Utilities for Socialtext REST APIs
-license:             ~
-generated_by:        ExtUtils::MakeMaker version 6.36
-distribution_type:   module
-requires:     
+# http://module-build.sourceforge.net/META-spec.html
+#XXXXXXX This is a prototype!!!  It will change in the future!!! XXXXX#
+name:         Socialtext-Resting-Utils
+version:      0.18
+version_from: lib/Socialtext/Resting/Utils.pm
+installdirs:  site
+requires:
     Getopt::Long:                  2.36
-    JSON:                          0
-    Socialtext::Resting:           0.21
+    JSON::XS:                      2.1
+    Socialtext::Resting:           0.27
     Test::Mock::LWP:               0
     Test::More:                    0
     YAML:                          0
-meta-spec:
-    url:     http://module-build.sourceforge.net/META-spec-v1.2.html
-    version: 1.2
-author:
-    - Luke Closs <cpan@5thplane.com>
+
+distribution_type: module
+generated_by: ExtUtils::MakeMaker version 6.17

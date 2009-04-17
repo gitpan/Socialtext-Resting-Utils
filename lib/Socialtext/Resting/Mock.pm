@@ -1,7 +1,7 @@
 package Socialtext::Resting::Mock;
 use strict;
 use warnings;
-use Test::Mock::LWP;
+use HTTP::Response;
 
 =head1 NAME
 
@@ -130,6 +130,7 @@ Retrieve a list of pages in the current workspace.
 
 sub get_pages {
     my ($self) = @_;
+    return $self->{_get_pages} if $self->{_get_pages}; # testing shortcut
     return keys %{ $self->{page} };
 }
 
@@ -194,6 +195,17 @@ sub accept {
     $self->{accept} = shift;
 }
 
+=head2 order( $order )
+
+Stores the requested order.
+
+=cut
+
+sub order {
+    my $self = shift;
+    $self->{order} = shift;
+}
+
 =head2 get_taggedpages( $tag )
 
 Retrieves the taggedpages stored in the object.
@@ -246,11 +258,10 @@ Retrieve a fake response object.
 
 =cut
 
-# hack so we don't need to create a new fake class
 sub response {
     my $self = shift;
     $self->{response} = shift if @_;
-    $self->{response} ||= HTTP::Response->new;
+    $self->{response} ||= HTTP::Response->new(200);
     return $self->{response};
 }
 

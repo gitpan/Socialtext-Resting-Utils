@@ -2,6 +2,7 @@ package Socialtext::Resting::DefaultRester;
 use strict;
 use warnings;
 use Socialtext::Resting;
+use Sys::Hostname qw/hostname/;
 
 =head1 NAME
 
@@ -9,7 +10,7 @@ Socialtext::Resting::DefaultRester - load a rester from a config file.
 
 =cut
 
-our $VERSION = '0.01';
+our $VERSION = '0.02';
 
 =head1 SYNOPSIS
 
@@ -54,6 +55,9 @@ The config file is expected to be in the following format:
   username = your-user
   password = your-password
 
+Your password will become crypted the first time it is loaded if Crypt::CBC
+is installed.
+
 =cut
 
 my $home = $ENV{HOME} || "~";
@@ -80,19 +84,83 @@ sub new {
 sub _load_config {
     my $file = shift;
 
+    unless (-e $file) {
+        open(my $fh, ">$file") or die "Can't open $file: $!";
+        print $fh <<EOT;
+server = http://www.socialtext.net
+workspace = open
+username = 
+password = 
+EOT
+        close $fh or die "Couldn't write basic config to $file: $!";
+        warn "Created an initial wiki config file in $file.\n";
+    }
+
     my %opts;
-    if (-e $file) {
-        open(my $fh, $file) or die "Can't open $file: $!";
-        while(<$fh>) {
-            if (/^(\w+)\s*=\s*(\S+)\s*$/) {
-                my ($key, $val) = (lc($1), $2);
-                $val =~ s#/$## if $key eq 'server';
-                $opts{$key} = $val;
-            }
+    open(my $fh, $file) or die "Can't open $file: $!";
+    while(<$fh>) {
+        if (/^(\w+)\s*=\s*(\S+)\s*$/) {
+            my ($key, $val) = (lc($1), $2);
+            $val =~ s#/$## if $key eq 'server';
+            $opts{$key} = $val;
         }
-        close $fh;
+    }
+
+    if (-w $file and $opts{password} and $opts{password} !~ /^CRYPTED_/) {
+        _change_password($file, $opts{password}) or return _load_config($file);
+    }
+
+    if ($opts{password} and $opts{password} =~ m/^CRYPTED_(.+)/) {
+        eval 'require Crypt::CBC';
+        if ($@) {
+            delete $opts{password};
+        }
+        else {
+            my $new_pw = _decrypt($1);
+            $opts{password} = $new_pw;
+        }
     }
     return %opts;
+}
+
+sub _change_password {
+    my $file = shift;
+    eval 'require Crypt::CBC';
+    return 0 if $@;
+
+    my $old_pw = shift;
+
+    my $new_pw = 'CRYPTED_' . _encrypt($old_pw);
+
+    local $/ = undef;
+    open(my $fh, $file) or die "Can't open $file: $!";
+    my $contents = <$fh>;
+    $contents =~ s/password\s*=\s*\Q$old_pw\E/password = $new_pw/m;
+    close $fh;
+    open(my $wfh, ">$file") or die "Can't open $file for writing: $!";
+    print $wfh $contents;
+    close $wfh or die "Can't write $file: $!";
+    return 1;
+}
+
+sub _encrypt {
+    my $from = shift;
+    my $crypt = Crypt::CBC->new(
+        -key => hostname(),
+        -salt => 1,
+        -header => 'salt',
+    );
+    return $crypt->encrypt_hex($from);
+}
+
+sub _decrypt {
+    my $from = shift;
+    my $crypt = Crypt::CBC->new(
+        -key => hostname(),
+        -salt => 1,
+        -header => 'salt',
+    );
+    return $crypt->decrypt_hex($from);
 }
 
 =head1 AUTHOR
