@@ -1,5 +1,8 @@
 Revision history for Socialtext-Utils
 
+0.20 - Sat May 23 23:09:00 PDT 2009
+  - Bugfixes to better work with and without Crypt::CBC
+
 0.19 - Mon Apr 20 11:22:58 PDT 2009
   - s/localtime/gmtime/ when posting pages
 
