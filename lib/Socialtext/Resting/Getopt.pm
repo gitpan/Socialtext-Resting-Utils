@@ -32,11 +32,12 @@ sub get_rester {
     Getopt::Long::Configure('pass_through');
     GetOptions(
         \%opts,
-        'server=s',
-        'workspace=s',
-        'username=s',
-        'password=s',
-        'rester-config=s',
+        'server|s=s',
+        'workspace|w=s',
+        'username|u=s',
+        'password|p=s',
+        'user_cookie=s',
+        'rester-config|c=s',
     );
     Getopt::Long::Configure('no_pass_through');
     return Socialtext::Resting::DefaultRester->new(%opts);
@@ -55,6 +56,7 @@ REST API Options:
  --server      Socialtext server
  --username    User to login as
  --password    User password
+ --user_cookie NLW-user cookie to use (supercedes username & password)
  --workspace   Workspace to use
  --rester-config   Config file containing 'key = value'
 
